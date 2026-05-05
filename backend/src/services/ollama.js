@@ -22,8 +22,13 @@ export async function generateCodeReview(code, contextDocs = []) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
         ],
-        stream: false
+        stream: true
     });
 
-    return response.message.content;
+    let fullResponse = '';
+    for await (const chunk of response) {
+        fullResponse += chunk.message.content;
+    }
+
+    return fullResponse;
 }

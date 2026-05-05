@@ -14,7 +14,9 @@ We are utilizing **Unsloth**, a library that makes training large models 2-5x fa
 ### 2. Install Engine Dependencies
 Create a notebook cell and run the following pip installations. (*Note: We removed `xformers` to prevent out-of-memory RAM crashes, as modern PyTorch natively handles the attention mechanisms without needing to compile it from source*):
 ```bash
-!pip install "unsloth[kaggle-new] @ git+https://github.com/unslothai/unsloth.git"
+# FIXED: Uninstall and freshly install the official PyPI packages to prevent version mismatches
+!pip uninstall unsloth unsloth_zoo -y
+!pip install --upgrade --no-cache-dir unsloth unsloth-zoo
 !pip install --no-deps trl peft accelerate bitsandbytes
 !pip install datasets pandas
 ```

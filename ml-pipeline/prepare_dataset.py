@@ -24,7 +24,7 @@ def prepare_diversevul():
         # ==========================================
         HF_TOKEN = "your_secret_token_here" 
 
-        dataset = load_dataset("VatsaDev/code-review", split="train[:1500]", token=HF_TOKEN) # Load 1500 authentic review examples
+        dataset = load_dataset("VatsaDev/code-review", split="train", token=HF_TOKEN) # Load all authentic review examples
     except Exception as e:
         print(f"Critical: Could not fetch VatsaDev/code-review. {e}")
         return None
