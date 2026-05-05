@@ -6,3 +6,4 @@ walkthrough.md
 ./ml-pipeline/Modelfile
 ./frontend/node_modules
 ./backend/node_modules
+chroma_data/
