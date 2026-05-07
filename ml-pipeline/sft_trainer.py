@@ -203,10 +203,12 @@ def run_training():
 
     print("Moving final GGUF model back to working directory for download...")
     import os, shutil
-    for f in os.listdir("/tmp"):
-        if f.endswith(".gguf") and "ai-code-reviewer-model" in f:
-            shutil.copy(os.path.join("/tmp", f), f"./{f}")
-            print(f"Successfully moved {f} ready for download!")
+    source_dir = "/tmp/ai-code-reviewer-model_gguf"
+    if os.path.exists(source_dir):
+        for f in os.listdir(source_dir):
+            if f.endswith(".gguf"):
+                shutil.copy(os.path.join(source_dir, f), "./custom-ai-reviewer-Q4_K_M.gguf")
+                print(f"Successfully moved {f} to custom-ai-reviewer-Q4_K_M.gguf ready for download!")
 
     print("\n======= SUCCESS =======")
     print("Training complete! The GGUF model has been successfully generated.")
