@@ -22,18 +22,41 @@ router.post('/analyze', upload.single('codeFile'), async (req, res) => {
         // 1. Retrieve RAG Context (e.g. project rules, past patches)
         const relevantContext = await queryRAGContext(codeContent);
 
-        // 2. Generate LLM Review
-        const reviewOutput = await generateCodeReview(codeContent, relevantContext);
+        // 2. Setup SSE Headers
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        // 3. Send initial metadata
+        res.write(`data: ${JSON.stringify({ type: 'metadata', rag_context_used: relevantContext.length > 0 })}\n\n`);
+
+        // 4. Generate LLM Review and stream chunks
+        const responseStream = await generateCodeReview(codeContent, relevantContext);
         
-        res.json({
-            success: true,
-            review: reviewOutput,
-            rag_context_used: relevantContext.length > 0
-        });
+        try {
+            for await (const chunk of responseStream) {
+                if (chunk && chunk.message && chunk.message.content) {
+                    res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk.message.content })}\n\n`);
+                }
+            }
+        } catch (streamError) {
+            // Ollama often cuts the connection gracefully or crashes if CPU takes too long.
+            // We catch "Did not receive done" so the user still sees the partial review!
+            console.warn("Stream ended early:", streamError.message);
+        }
+
+        // 5. End Stream
+        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        res.end();
 
     } catch (error) {
         console.error("Review Error:", error);
-        res.status(500).json({ error: 'Failed to generate code review.', details: error.message });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to generate code review.', details: error.message });
+        } else {
+            res.write(`data: ${JSON.stringify({ type: 'error', error: 'Failed to generate code review.', details: error.message })}\n\n`);
+            res.end();
+        }
     }
 });
 

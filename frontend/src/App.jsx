@@ -16,16 +16,63 @@ function App() {
     setResult(null);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/review/analyze', { code });
-      setResult(response.data);
+      const response = await fetch('http://localhost:5000/api/review/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed with status ${response.status}`);
+      }
+
+      // Stop the global loading spinner, the stream has started!
+      setLoading(false); 
+      setResult({ review: "", rag_context_used: false, success: true });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      
+      let done = false;
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          const chunkString = decoder.decode(value, { stream: true });
+          const lines = chunkString.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                if (data.type === 'metadata') {
+                  setResult(prev => ({ ...prev, rag_context_used: data.rag_context_used }));
+                } else if (data.type === 'chunk') {
+                  setResult(prev => ({ ...prev, review: (prev?.review || "") + data.text }));
+                } else if (data.type === 'error') {
+                  setResult({ error: data.error, details: data.details });
+                  done = true;
+                } else if (data.type === 'done') {
+                  done = true;
+                }
+              } catch (e) {
+                // Ignore incomplete JSON chunks, they will be concatenated in the next stream chunk if necessary
+                // Though with SSE, `data: {...}\n\n` usually arrives complete.
+              }
+            }
+          }
+        }
+      }
+
     } catch (error) {
       console.error(error);
+      setLoading(false);
       setResult({
-        error: error.response?.data?.error || "Failed to analyze code. Make sure the backend is running.",
+        error: "Failed to analyze code. Make sure the backend is running.",
         details: error.message
       });
-    } finally {
-      setLoading(false);
     }
   };
 

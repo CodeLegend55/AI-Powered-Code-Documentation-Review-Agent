@@ -25,10 +25,5 @@ export async function generateCodeReview(code, contextDocs = []) {
         stream: true
     });
 
-    let fullResponse = '';
-    for await (const chunk of response) {
-        fullResponse += chunk.message.content;
-    }
-
-    return fullResponse;
+    return response;
 }
